@@ -1,0 +1,63 @@
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  font-size: 15px;
+  background: #e9ece5;
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+  color: #26332e;
+  font-family: 'Aptos', 'Segoe UI', sans-serif;
+  background-color: #e9ece5;
+  background-image: radial-gradient(#9da99c 0.65px, transparent 0.65px);
+  background-size: 18px 18px;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+#root {
+  min-height: 100vh;
+  padding: 28px clamp(16px, 3vw, 48px);
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  color: #173f35;
+  background: #d9e99d;
+}
+
