@@ -20,6 +20,37 @@
   font-size: 1.5rem;
 }
 
+.fullscreen-status {
+  margin: 0 0 18px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  justify-self: flex-start;
+  background: #edf4ff;
+  color: #214f8d;
+  border: 1px solid #d9e7ff;
+}
+
+.fullscreen-status.requesting {
+  background: #fff7df;
+  color: #8a5c00;
+  border-color: #f4d58d;
+}
+
+.fullscreen-status.enabled {
+  background: #eafaf1;
+  color: #1d6b4f;
+  border-color: #bfe8ce;
+}
+
+.fullscreen-status.blocked {
+  background: #fbeae8;
+  color: #9d3c35;
+  border-color: #f1c4bf;
+}
+
 .field-group,
 .field-section {
   margin-bottom: 18px;

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 
 const languageOptions = [
@@ -621,6 +621,53 @@ const hobbyOptions = [
 ]
 
 function App() {
+  const [fullscreenStatus, setFullscreenStatus] = useState('idle')
+
+  useEffect(() => {
+    let attemptedFullscreen = false
+
+    const tryEnterFullscreen = async () => {
+      if (attemptedFullscreen) return
+      attemptedFullscreen = true
+
+      const doc = document.documentElement
+      const elem = document.documentElement
+      const requestFullscreen =
+        elem.requestFullscreen ||
+        elem.webkitRequestFullscreen ||
+        elem.mozRequestFullScreen ||
+        elem.msRequestFullscreen
+
+      if (typeof requestFullscreen !== 'function') {
+        setFullscreenStatus('blocked')
+        return
+      }
+
+      try {
+        await requestFullscreen.call(elem)
+        setFullscreenStatus(document.fullscreenElement ? 'enabled' : 'blocked')
+      } catch {
+        setFullscreenStatus('blocked')
+      }
+
+      if (!document.fullscreenElement && !doc.webkitFullscreenElement && !doc.mozFullScreenElement) {
+        setFullscreenStatus('blocked')
+      }
+    }
+
+    const onFirstMouseMove = () => {
+      setFullscreenStatus('requesting')
+      tryEnterFullscreen()
+      window.removeEventListener('mousemove', onFirstMouseMove, { passive: true })
+    }
+
+    window.addEventListener('mousemove', onFirstMouseMove, { passive: true })
+
+    return () => {
+      window.removeEventListener('mousemove', onFirstMouseMove, { passive: true })
+    }
+  }, [])
+
   const [cvLanguage, setCvLanguage] = useState('en')
   const [templateStyle, setTemplateStyle] = useState('blueHeader')
   const [theme, setTheme] = useState(themePresets[0])
@@ -906,6 +953,13 @@ function App() {
     <div className="builder-layout" dir={isRtl ? 'rtl' : 'ltr'}>
       <aside className="editor-panel">
         <h2>{labels.builder}</h2>
+
+        <div className={`fullscreen-status ${fullscreenStatus}`}>
+          {fullscreenStatus === 'enabled' && 'Fullscreen enabled'}
+          {fullscreenStatus === 'requesting' && 'Requesting fullscreen…'}
+          {fullscreenStatus === 'blocked' && 'Fullscreen blocked by browser'}
+          {fullscreenStatus === 'idle' && 'Fullscreen not requested yet'}
+        </div>
 
         <div className="field-group">
           <label>{labels.templateStyle}</label>
