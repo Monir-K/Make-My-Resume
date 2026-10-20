@@ -520,7 +520,7 @@ const initialProfile = {
   title: 'Web Developer & UI/UX Designer',
   phone: '+93 700 000 000',
   address: 'Kabul, Afghanistan',
-  email: 'monir.kamjo@gmail.com',
+  email: 'Monir.kamjo@sample.com',
   website: 'monirkamjo.com',
   nationality: 'Afghan',
   postalCode: '1001',
@@ -621,8 +621,6 @@ const hobbyOptions = [
 ]
 
 function App() {
-  const [fullscreenStatus, setFullscreenStatus] = useState('idle')
-
   useEffect(() => {
     let attemptedFullscreen = false
 
@@ -630,7 +628,6 @@ function App() {
       if (attemptedFullscreen) return
       attemptedFullscreen = true
 
-      const doc = document.documentElement
       const elem = document.documentElement
       const requestFullscreen =
         elem.requestFullscreen ||
@@ -639,24 +636,17 @@ function App() {
         elem.msRequestFullscreen
 
       if (typeof requestFullscreen !== 'function') {
-        setFullscreenStatus('blocked')
         return
       }
 
       try {
         await requestFullscreen.call(elem)
-        setFullscreenStatus(document.fullscreenElement ? 'enabled' : 'blocked')
       } catch {
-        setFullscreenStatus('blocked')
-      }
-
-      if (!document.fullscreenElement && !doc.webkitFullscreenElement && !doc.mozFullScreenElement) {
-        setFullscreenStatus('blocked')
+        // Some browsers block fullscreen requests unless the page is served over localhost/HTTPS.
       }
     }
 
     const onFirstMouseMove = () => {
-      setFullscreenStatus('requesting')
       tryEnterFullscreen()
       window.removeEventListener('mousemove', onFirstMouseMove, { passive: true })
     }
@@ -953,13 +943,6 @@ function App() {
     <div className="builder-layout" dir={isRtl ? 'rtl' : 'ltr'}>
       <aside className="editor-panel">
         <h2>{labels.builder}</h2>
-
-        <div className={`fullscreen-status ${fullscreenStatus}`}>
-          {fullscreenStatus === 'enabled' && 'Fullscreen enabled'}
-          {fullscreenStatus === 'requesting' && 'Requesting fullscreen…'}
-          {fullscreenStatus === 'blocked' && 'Fullscreen blocked by browser'}
-          {fullscreenStatus === 'idle' && 'Fullscreen not requested yet'}
-        </div>
 
         <div className="field-group">
           <label>{labels.templateStyle}</label>
