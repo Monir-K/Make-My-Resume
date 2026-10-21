@@ -1392,6 +1392,41 @@
   background: #315c4b;
 }
 
+.fullscreen-toggle {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(18px, env(safe-area-inset-right));
+  z-index: 20;
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid rgba(49, 92, 75, 0.22);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 3px 12px rgba(34, 48, 39, 0.12);
+  color: #315c4b;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+
+.fullscreen-toggle:hover {
+  background: #f2f7f2;
+}
+
+.fullscreen-toggle:focus-visible {
+  outline: 3px solid #a95e42;
+  outline-offset: 3px;
+}
+
+.fullscreen-toggle-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
 .print-preview-overlay {
   position: fixed;
   inset: 0;
@@ -2035,6 +2070,14 @@
 @media (max-width: 1120px) {
   #root {
     padding: 12px 12px 94px;
+  }
+
+  .fullscreen-toggle {
+    top: max(10px, env(safe-area-inset-top));
+    right: max(10px, env(safe-area-inset-right));
+    min-height: 38px;
+    padding: 7px 9px;
+    font-size: 0.76rem;
   }
 
   .builder-layout {

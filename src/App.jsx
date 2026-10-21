@@ -621,40 +621,69 @@ const hobbyOptions = [
 ]
 
 function App() {
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const fullscreenAttemptedRef = useRef(false)
+
+  const enterFullscreen = async () => {
+    const elem = document.documentElement
+    const requestFullscreen =
+      elem.requestFullscreen ||
+      elem.webkitRequestFullscreen ||
+      elem.mozRequestFullScreen ||
+      elem.msRequestFullscreen
+
+    if (typeof requestFullscreen !== 'function') return
+
+    try {
+      await requestFullscreen.call(elem)
+    } catch {
+      // Browsers may deny fullscreen based on permissions or the current browsing context.
+    }
+  }
+
+  const toggleFullscreen = async () => {
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      const exitFullscreen =
+        document.exitFullscreen ||
+        document.webkitExitFullscreen ||
+        document.mozCancelFullScreen ||
+        document.msExitFullscreen
+
+      if (typeof exitFullscreen === 'function') {
+        try {
+          await exitFullscreen.call(document)
+        } catch {
+          // Keep the site usable if the browser refuses to exit fullscreen.
+        }
+      }
+      return
+    }
+
+    await enterFullscreen()
+  }
+
   useEffect(() => {
-    let attemptedFullscreen = false
-
-    const tryEnterFullscreen = async () => {
-      if (attemptedFullscreen) return
-      attemptedFullscreen = true
-
-      const elem = document.documentElement
-      const requestFullscreen =
-        elem.requestFullscreen ||
-        elem.webkitRequestFullscreen ||
-        elem.mozRequestFullScreen ||
-        elem.msRequestFullscreen
-
-      if (typeof requestFullscreen !== 'function') {
-        return
-      }
-
-      try {
-        await requestFullscreen.call(elem)
-      } catch {
-        // Some browsers block fullscreen requests unless the page is served over localhost/HTTPS.
-      }
+    const onFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement || document.webkitFullscreenElement))
     }
 
-    const onFirstMouseMove = () => {
-      tryEnterFullscreen()
-      window.removeEventListener('mousemove', onFirstMouseMove, { passive: true })
+    const onFirstClick = (event) => {
+      if (fullscreenAttemptedRef.current) return
+      fullscreenAttemptedRef.current = true
+      document.removeEventListener('click', onFirstClick, true)
+
+      const clickedToggle = event.target instanceof Element && event.target.closest('[data-fullscreen-toggle]')
+      if (!clickedToggle) enterFullscreen()
     }
 
-    window.addEventListener('mousemove', onFirstMouseMove, { passive: true })
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    document.addEventListener('webkitfullscreenchange', onFullscreenChange)
+    document.addEventListener('click', onFirstClick, true)
 
     return () => {
-      window.removeEventListener('mousemove', onFirstMouseMove, { passive: true })
+      document.removeEventListener('fullscreenchange', onFullscreenChange)
+      document.removeEventListener('webkitfullscreenchange', onFullscreenChange)
+      document.removeEventListener('click', onFirstClick, true)
     }
   }, [])
 
@@ -1287,6 +1316,18 @@ function App() {
 
   return (
     <div className="builder-layout" dir={isRtl ? 'rtl' : 'ltr'}>
+      <button
+        type="button"
+        className="fullscreen-toggle"
+        data-fullscreen-toggle
+        aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+        aria-pressed={isFullscreen}
+        onClick={toggleFullscreen}
+      >
+        <span className="fullscreen-toggle-icon" aria-hidden="true">{isFullscreen ? '⛶' : '⛶'}</span>
+        <span>{isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}</span>
+      </button>
+
       <aside className="editor-panel">
         <h2>{labels.builder}</h2>
 
