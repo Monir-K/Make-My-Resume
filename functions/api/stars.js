@@ -45,14 +45,16 @@ const getStarState = async (database, visitorHash) => {
 }
 
 const missingDatabase = () => jsonResponse({ error: 'Star voting is not configured yet.' }, 503)
+const getDatabase = (env) => env.STARS_DB || env.stars_db
 
 export const onRequestGet = async ({ request, env }) => {
-  if (!env.STARS_DB) return missingDatabase()
+  const database = getDatabase(env)
+  if (!database) return missingDatabase()
 
   try {
     const visitor = getVisitor(request)
     const visitorHash = await hashVisitorToken(visitor.token)
-    const state = await getStarState(env.STARS_DB, visitorHash)
+    const state = await getStarState(database, visitorHash)
     return jsonResponse(state, 200, { 'Set-Cookie': visitor.cookie })
   } catch {
     return jsonResponse({ error: 'Star count is temporarily unavailable.' }, 503)
@@ -60,7 +62,8 @@ export const onRequestGet = async ({ request, env }) => {
 }
 
 export const onRequestPost = async ({ request, env }) => {
-  if (!env.STARS_DB) return missingDatabase()
+  const database = getDatabase(env)
+  if (!database) return missingDatabase()
 
   const origin = request.headers.get('Origin')
   if (origin && origin !== new URL(request.url).origin) {
@@ -70,11 +73,11 @@ export const onRequestPost = async ({ request, env }) => {
   try {
     const visitor = getVisitor(request)
     const visitorHash = await hashVisitorToken(visitor.token)
-    await env.STARS_DB
+    await database
       .prepare('INSERT OR IGNORE INTO stars (visitor_hash) VALUES (?)')
       .bind(visitorHash)
       .run()
-    const state = await getStarState(env.STARS_DB, visitorHash)
+    const state = await getStarState(database, visitorHash)
     return jsonResponse(state, 200, { 'Set-Cookie': visitor.cookie })
   } catch {
     return jsonResponse({ error: 'Your star could not be saved. Please try again.' }, 503)

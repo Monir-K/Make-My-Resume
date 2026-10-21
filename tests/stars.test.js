@@ -71,3 +71,11 @@ test('reports missing D1 configuration without throwing', async () => {
   assert.equal(response.status, 503)
   assert.deepEqual(await response.json(), { error: 'Star voting is not configured yet.' })
 })
+
+test('supports the lowercase stars_db Cloudflare binding name', async () => {
+  const database = new MockD1Database()
+  const response = await onRequestGet({ request: createRequest('GET'), env: { stars_db: database } })
+
+  assert.equal(response.status, 200)
+  assert.deepEqual(await response.json(), { count: 0, starred: false })
+})
