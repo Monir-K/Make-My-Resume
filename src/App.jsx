@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './App.css'
 
 const languageOptions = [
@@ -679,8 +679,28 @@ function App() {
   const [jobHelpOpen, setJobHelpOpen] = useState(false)
   const [jobHelpCountry, setJobHelpCountry] = useState('')
   const [jobHelpConsent, setJobHelpConsent] = useState(false)
+  const [teaSupportOpen, setTeaSupportOpen] = useState(false)
+  const [teaThanks, setTeaThanks] = useState(false)
+  const teaTriggerRef = useRef(null)
+  const teaCloseRef = useRef(null)
   const labels = { ...translations.en, ...(translations[cvLanguage] || {}), ...personalTranslations.en, ...(personalTranslations[cvLanguage] || {}) }
   const isRtl = ['ar', 'fa', 'he', 'ur'].includes(cvLanguage)
+
+  useEffect(() => {
+    if (!teaSupportOpen) return undefined
+
+    const teaTrigger = teaTriggerRef.current
+    teaCloseRef.current?.focus()
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setTeaSupportOpen(false)
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      teaTrigger?.focus()
+    }
+  }, [teaSupportOpen])
 
   const countryJobSites = {
     Brazil: [
@@ -1819,6 +1839,50 @@ function App() {
           </section>
         </div>
       )}
+
+      <div className="tea-support-widget">
+        {teaSupportOpen && (
+          <section id="tea-support-panel" className="tea-support-panel" role="dialog" aria-modal="false" aria-labelledby="tea-support-title">
+            <div className="tea-support-panel-heading">
+              <div>
+                <span className="tea-support-eyebrow">A little warmth goes a long way</span>
+                <h2 id="tea-support-title">Enjoying this Resume Builder?</h2>
+              </div>
+              <button
+                ref={teaCloseRef}
+                type="button"
+                className="tea-support-close"
+                aria-label="Close support panel"
+                onClick={() => setTeaSupportOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+            <img className="tea-support-image" src="/tea_PNG16927.png" alt="A glass cup of tea" />
+            <p>If this tool helped you create your resume, you can support my work by buying me a tea. Your support helps me maintain and improve this free service.</p>
+            <button className="tea-support-action" type="button" onClick={() => setTeaThanks(true)}>
+              Buy me a tea ☕
+            </button>
+            {teaThanks && <p className="tea-support-thanks" role="status">Thank you! Payment support is coming soon.</p>}
+          </section>
+        )}
+
+        <button
+          ref={teaTriggerRef}
+          type="button"
+          className="tea-support-trigger"
+          aria-label="Buy me a tea"
+          aria-expanded={teaSupportOpen}
+          aria-controls="tea-support-panel"
+          onClick={() => {
+            setTeaThanks(false)
+            setTeaSupportOpen((open) => !open)
+          }}
+        >
+          <img src="/tea_PNG16927.png" alt="" aria-hidden="true" />
+          <span>Buy me a tea</span>
+        </button>
+      </div>
     </div>
   )
 }
