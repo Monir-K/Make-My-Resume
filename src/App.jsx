@@ -681,6 +681,10 @@ function App() {
   const [jobHelpConsent, setJobHelpConsent] = useState(false)
   const [teaSupportOpen, setTeaSupportOpen] = useState(false)
   const [teaThanks, setTeaThanks] = useState(false)
+  const [printPreview, setPrintPreview] = useState(null)
+  const printPreviewTriggerRef = useRef(null)
+  const printPreviewDialogRef = useRef(null)
+  const printPreviewCloseRef = useRef(null)
   const teaTriggerRef = useRef(null)
   const teaCloseRef = useRef(null)
   const labels = { ...translations.en, ...(translations[cvLanguage] || {}), ...personalTranslations.en, ...(personalTranslations[cvLanguage] || {}) }
@@ -701,6 +705,41 @@ function App() {
       teaTrigger?.focus()
     }
   }, [teaSupportOpen])
+
+  useEffect(() => {
+    if (!printPreview) return undefined
+
+    const trigger = printPreviewTriggerRef.current
+    const dialog = printPreviewDialogRef.current
+    const focusableElements = () => [...dialog.querySelectorAll('button:not([disabled])')]
+    printPreviewCloseRef.current?.focus()
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setPrintPreview(null)
+        return
+      }
+
+      if (event.key === 'Tab') {
+        const elements = focusableElements()
+        const first = elements[0]
+        const last = elements[elements.length - 1]
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault()
+          last?.focus()
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault()
+          first?.focus()
+        }
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      trigger?.focus()
+    }
+  }, [printPreview])
 
   const countryJobSites = {
     Brazil: [
@@ -1160,11 +1199,11 @@ function App() {
     link.click()
   }
 
-  const exportAsPdf = async () => {
+  const openCvPrintView = async (printAfterOpen = false) => {
     const printWindow = window.open('', '_blank', 'width=1200,height=900')
 
     if (!printWindow) {
-      window.alert('Allow pop-ups for this site to print your CV as a PDF.')
+      window.alert('Allow pop-ups for this site to open your CV print preview.')
       return
     }
 
@@ -1180,21 +1219,43 @@ function App() {
     const imgData = canvas.toDataURL('image/jpeg', 0.94)
     const orientation = canvas.width > canvas.height ? 'landscape' : 'portrait'
     printWindow.document.write(`
-      <html>
+      <!doctype html>
+      <html lang="en">
         <head>
-          <title>Resume</title>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <title>CV Print Preview</title>
           <style>
             @page { size: A4 ${orientation}; margin: 0; }
-            html, body { width: 100%; height: 100%; margin: 0; padding: 0; }
-            body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-            img { display: block; width: 100%; height: 100%; object-fit: contain; }
-            @media screen {
-              body { width: min(90vw, 900px); height: min(90vh, 1100px); margin: 16px auto; background: #ffffff; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+            * { box-sizing: border-box; }
+            html, body { min-height: 100%; margin: 0; }
+            body { background: #e9ece5; color: #26332e; font: 15px Arial, sans-serif; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .preview-toolbar { position: sticky; top: 0; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 20px; background: #fff; border-bottom: 1px solid #d7dfd4; box-shadow: 0 2px 8px rgba(38,51,46,.08); }
+            .preview-toolbar strong { font-size: 16px; }
+            .preview-toolbar button { min-height: 42px; padding: 9px 16px; border: 0; border-radius: 4px; background: #315c4b; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+            .preview-toolbar button:hover { background: #254b3b; }
+            .preview-toolbar button:focus-visible { outline: 3px solid #a95e42; outline-offset: 3px; }
+            .preview-paper { width: min(760px, calc(100vw - 32px)); aspect-ratio: ${canvas.width} / ${canvas.height}; margin: 24px auto; background: #fff; box-shadow: 0 12px 38px rgba(38,51,46,.2); }
+            .preview-paper img { display: block; width: 100%; height: 100%; object-fit: contain; }
+            @media print {
+              html, body { width: 100%; height: 100%; background: #fff; }
+              .preview-toolbar { display: none !important; }
+              .preview-paper { width: 100vw; height: 100vh; max-width: none; aspect-ratio: auto; margin: 0; box-shadow: none; }
+            }
+            @media (max-width: 480px) {
+              .preview-toolbar { align-items: flex-start; flex-direction: column; gap: 10px; }
+              .preview-paper { margin-top: 16px; }
             }
           </style>
         </head>
         <body>
-          <img src="${imgData}" alt="Resume preview" />
+          <header class="preview-toolbar">
+            <strong>CV print preview · A4 ${orientation}</strong>
+            <button id="print-cv" type="button">Print / Save PDF</button>
+          </header>
+          <main class="preview-paper">
+            <img src="${imgData}" alt="Preview of your CV on A4 paper" />
+          </main>
         </body>
       </html>
     `)
@@ -1203,10 +1264,24 @@ function App() {
     try {
       await image.decode()
       printWindow.focus()
-      printWindow.print()
+      printWindow.document.querySelector('#print-cv').addEventListener('click', () => printWindow.print())
+      if (printAfterOpen) printWindow.print()
     } catch {
       printWindow.close()
       window.alert('The CV preview could not be prepared for PDF printing. Please try again.')
+    }
+  }
+
+  const exportAsPdf = () => openCvPrintView(true)
+  const openPrintPreview = async () => {
+    try {
+      const canvas = createA4Canvas(await captureStyledPreview())
+      setPrintPreview({
+        image: canvas.toDataURL('image/jpeg', 0.94),
+        orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+      })
+    } catch {
+      window.alert('The CV preview could not be prepared. Please try again.')
     }
   }
 
@@ -1528,6 +1603,9 @@ function App() {
           <button type="button" className="export-button" onClick={exportAsPdf}>
             {labels.downloadPdf}
           </button>
+          <button ref={printPreviewTriggerRef} type="button" className="export-button preview" onClick={openPrintPreview}>
+            Print Preview
+          </button>
           <button type="button" className="export-button secondary" onClick={exportAsImage}>
             {labels.downloadJpg}
           </button>
@@ -1536,6 +1614,37 @@ function App() {
           </button>
         </div>
       </aside>
+
+      {printPreview && (
+        <div className="print-preview-overlay" onClick={() => setPrintPreview(null)}>
+          <section
+            className="print-preview-dialog"
+            ref={printPreviewDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="print-preview-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="print-preview-toolbar">
+              <div>
+                <h2 id="print-preview-title">Print Preview</h2>
+                <p>A4 paper · {printPreview.orientation}</p>
+              </div>
+              <div className="print-preview-actions">
+                <button type="button" className="export-button" onClick={() => openCvPrintView(true)}>
+                  Print / Save PDF
+                </button>
+                <button ref={printPreviewCloseRef} type="button" className="print-preview-close" onClick={() => setPrintPreview(null)}>
+                  Close
+                </button>
+              </div>
+            </header>
+            <div className="print-preview-paper" style={{ aspectRatio: printPreview.orientation === 'landscape' ? '3508 / 2480' : '2480 / 3508' }}>
+              <img src={printPreview.image} alt="Preview of your CV on A4 paper" />
+            </div>
+          </section>
+        </div>
+      )}
 
       {jobHelpOpen && (
         <div className="photo-crop-overlay" onClick={() => setJobHelpOpen(false)}>
