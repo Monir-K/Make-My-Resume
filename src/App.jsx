@@ -676,8 +676,259 @@ function App() {
   const [writingDetails, setWritingDetails] = useState('')
   const [writingTone, setWritingTone] = useState('professional')
   const [writingDraft, setWritingDraft] = useState('')
+  const [jobHelpOpen, setJobHelpOpen] = useState(false)
+  const [jobHelpCountry, setJobHelpCountry] = useState('')
+  const [jobHelpConsent, setJobHelpConsent] = useState(false)
   const labels = { ...translations.en, ...(translations[cvLanguage] || {}), ...personalTranslations.en, ...(personalTranslations[cvLanguage] || {}) }
   const isRtl = ['ar', 'fa', 'he', 'ur'].includes(cvLanguage)
+
+  const countryJobSites = {
+    Brazil: [
+      { name: 'LinkedIn', url: 'https://www.linkedin.com/jobs/', reason: 'Key hiring platform for professional roles in Brazil.' },
+      { name: 'Vagas.com.br', url: 'https://www.vagas.com.br/', reason: 'Brazil’s most widely used local job board.' },
+      { name: 'Catho', url: 'https://www.catho.com.br/', reason: 'Very common for mid-size and large-company job listings.' },
+      { name: 'Gupy', url: 'https://www.gupy.io/', reason: 'Popular among startups and growing Brazilian employers.' },
+      { name: 'InfoJobs Brasil', url: 'https://www.infojobs.com.br/', reason: 'One of the strongest local portals for office and specialist jobs.' },
+      { name: 'Indeed Brasil', url: 'https://br.indeed.com/', reason: 'Strong local search engine with many vacancies.' },
+      { name: 'Jobie', url: 'https://jobie.com.br/', reason: 'Useful for local roles across different sectors.' },
+      { name: 'Jooble Brazil', url: 'https://ar.jooble.org/', reason: 'Helpful for collecting multiple platform results quickly.' },
+      { name: 'Workana', url: 'https://www.workana.com/', reason: 'Strong option for freelance, remote, and project work.' },
+      { name: 'Upwork', url: 'https://www.upwork.com/', reason: 'Useful for flexible or remote freelance work.' },
+      { name: 'BNE', url: 'https://www.bne.com.br/', reason: 'A well-known Brazilian jobs portal for local opportunities.' },
+      { name: 'Freelancer', url: 'https://www.freelancer.com/', reason: 'Useful for project-based work and contract jobs.' },
+    ],
+    Germany: [
+      { name: 'StepStone', url: 'https://www.stepstone.de/', reason: 'One of the top job portals in Germany.' },
+      { name: 'Bundesagentur für Arbeit', url: 'https://www.arbeitsagentur.de/', reason: 'Official German public employment service.' },
+      { name: 'LinkedIn', url: 'https://www.linkedin.com/jobs/', reason: 'Very relevant for Germany-based employers and networking.' },
+      { name: 'Indeed Germany', url: 'https://de.indeed.com/', reason: 'Strong general platform for local roles.' },
+      { name: 'Xing', url: 'https://www.xing.com/jobs', reason: 'Important professional network in Germany.' },
+      { name: 'Monster Germany', url: 'https://www.monster.de/', reason: 'Useful for corporate and mid-senior positions.' },
+      { name: 'Jobware', url: 'https://www.jobware.de/', reason: 'Popular with recruiters and local employers.' },
+      { name: 'Glassdoor Germany', url: 'https://www.glassdoor.de/', reason: 'Useful for employer research and salary insight.' },
+      { name: 'Jooble Germany', url: 'https://de.jooble.org/', reason: 'Good broader search engine for Germany.' },
+      { name: 'Make it in Germany', url: 'https://www.make-it-in-germany.com/', reason: 'Helpful for international candidates seeking work in Germany.' },
+      { name: 'Jobsuche', url: 'https://www.jobsuche.de/', reason: 'Useful for aggregated local listings.' },
+      { name: 'Remote OK', url: 'https://remoteok.com/', reason: 'Helpful for remote-friendly work with German companies.' },
+    ],
+    'United States': [
+      { name: 'LinkedIn', url: 'https://www.linkedin.com/jobs/', reason: 'Strongest general job platform in the United States.' },
+      { name: 'Indeed', url: 'https://www.indeed.com/', reason: 'One of the most popular U.S. job search sites.' },
+      { name: 'ZipRecruiter', url: 'https://www.ziprecruiter.com/', reason: 'High-volume local hiring platform for many industries.' },
+      { name: 'Glassdoor', url: 'https://www.glassdoor.com/', reason: 'Useful for employer research and salary comparisons.' },
+      { name: 'USAJOBS', url: 'https://www.usajobs.gov/', reason: 'Best for federal government jobs.' },
+      { name: 'Wellfound', url: 'https://wellfound.com/jobs', reason: 'Strong option for startup and tech roles.' },
+      { name: 'AngelList', url: 'https://angel.co/', reason: 'Popular for startup hiring and product roles.' },
+      { name: 'Dice', url: 'https://www.dice.com/', reason: 'Very relevant for tech and IT careers.' },
+      { name: 'FlexJobs', url: 'https://www.flexjobs.com/', reason: 'Useful for remote, flexible, and hybrid jobs.' },
+      { name: 'Remote OK', url: 'https://remoteok.com/', reason: 'Useful for remote-friendly opportunities.' },
+      { name: 'Hired', url: 'https://hired.com/', reason: 'Useful for tech and product roles.' },
+      { name: 'Workable', url: 'https://www.workable.com/', reason: 'Strong for employer and startup hiring pages.' },
+    ],
+    'United Kingdom': [
+      { name: 'Indeed UK', url: 'https://uk.indeed.com/', reason: 'One of the most used job searches in the UK.' },
+      { name: 'LinkedIn', url: 'https://www.linkedin.com/jobs/', reason: 'Strong for professional roles and recruiter outreach.' },
+      { name: 'Reed', url: 'https://www.reed.co.uk/', reason: 'Very common UK recruitment platform.' },
+      { name: 'Totaljobs', url: 'https://www.totaljobs.com/', reason: 'Popular with employers across the UK.' },
+      { name: 'CV-Library', url: 'https://www.cv-library.co.uk/', reason: 'Strong site for local hiring across sectors.' },
+      { name: 'Glassdoor UK', url: 'https://www.glassdoor.co.uk/', reason: 'Useful for employer reviews and salary insight.' },
+      { name: 'Monster UK', url: 'https://www.monster.co.uk/', reason: 'Relevant for many corporate and professional roles.' },
+      { name: 'Jobsite', url: 'https://www.jobsite.co.uk/', reason: 'Helpful for broad UK job searches.' },
+      { name: 'Gov UK Jobs', url: 'https://www.gov.uk/find-a-job', reason: 'Official public job portal for UK roles.' },
+      { name: 'Adzuna', url: 'https://www.adzuna.co.uk/', reason: 'Popular aggregation site across multiple UK employers.' },
+      { name: 'Hays', url: 'https://www.hays.co.uk/', reason: 'Well-known recruitment agency and employer network.' },
+      { name: 'Remote OK', url: 'https://remoteok.com/', reason: 'Useful for remote-friendly roles in UK-based companies.' },
+    ],
+    Canada: [
+      { name: 'LinkedIn', url: 'https://www.linkedin.com/jobs/', reason: 'One of the strongest hiring platforms in Canada.' },
+      { name: 'Indeed Canada', url: 'https://ca.indeed.com/', reason: 'Very popular for local and national job searches.' },
+      { name: 'Job Bank', url: 'https://www.jobbank.gc.ca/', reason: 'Official Canadian job search and labour market portal.' },
+      { name: 'Workopolis', url: 'https://www.workopolis.com/', reason: 'Well-known Canadian job search site.' },
+      { name: 'Eluta', url: 'https://www.eluta.ca/', reason: 'Strong Canadian job database for business and professional roles.' },
+      { name: 'Glassdoor Canada', url: 'https://www.glassdoor.ca/', reason: 'Useful for company and salary research.' },
+      { name: 'Monster Canada', url: 'https://www.monster.ca/', reason: 'Useful for many corporate and public sector positions.' },
+      { name: 'TalentEgg', url: 'https://www.talentegg.com/', reason: 'Strong for early careers and student placements.' },
+      { name: 'Mosaic', url: 'https://mosaicprojects.com/', reason: 'Useful for project roles in selected sectors.' },
+      { name: 'Jooble Canada', url: 'https://ca.jooble.org/', reason: 'Helpful for aggregated results across Canada.' },
+      { name: 'Remote OK', url: 'https://remoteok.com/', reason: 'Useful for remote-friendly Canadian opportunities.' },
+      { name: 'Wework', url: 'https://weworkremotely.com/', reason: 'Good for remote-first and distributed roles.' },
+    ],
+    France: [
+      { name: 'Pôle Emploi / France Travail', url: 'https://www.francetravail.fr/', reason: 'Official public employment portal in France.' },
+      { name: 'LinkedIn', url: 'https://www.linkedin.com/jobs/', reason: 'Very relevant for French employers and recruiters.' },
+      { name: 'Indeed France', url: 'https://fr.indeed.com/', reason: 'Popular general job search for French vacancies.' },
+      { name: 'Welcome to the Jungle', url: 'https://www.welcometothejungle.com/fr', reason: 'Strong startup and employer brand portal in France.' },
+      { name: 'APEC', url: 'https://www.apec.fr/', reason: 'Strong for graduates and young professionals in France.' },
+      { name: 'Keljob', url: 'https://www.keljob.com/', reason: 'Useful for local role discovery and sector-specific listings.' },
+      { name: 'JobiJoba', url: 'https://www.jobijoba.com/fr', reason: 'Aggregates French opportunities across employers.' },
+      { name: 'Monster France', url: 'https://www.monster.fr/', reason: 'Useful for local roles and recruitment agencies.' },
+      { name: 'Hellowork', url: 'https://fr.hellowork.com/', reason: 'Strong French jobs portal for many sectors.' },
+      { name: 'Glassdoor France', url: 'https://www.glassdoor.fr/', reason: 'Helpful for salary and employer reviews.' },
+      { name: 'Jooble France', url: 'https://fr.jooble.org/', reason: 'Useful for broad cross-platform job searches.' },
+      { name: 'Remote OK', url: 'https://remoteok.com/', reason: 'Helpful for remote-friendly French openings.' },
+    ],
+    Spain: [
+      { name: 'InfoJobs', url: 'https://www.infojobs.net/', reason: 'One of the leading Spanish job portals.' },
+      { name: 'LinkedIn', url: 'https://www.linkedin.com/jobs/', reason: 'Strong for Spanish employers and professional networking.' },
+      { name: 'Indeed Spain', url: 'https://es.indeed.com/', reason: 'Popular job search site in Spain.' },
+      { name: 'MediJobs', url: 'https://www.medijobs.es/', reason: 'Useful for professional and specialist roles.' },
+      { name: 'Jobtoday Spain', url: 'https://www.jobtoday.com/es', reason: 'Useful for quick local role discovery.' },
+      { name: 'Randstad Spain', url: 'https://www.randstad.es/', reason: 'Strong recruitment platform across sectors.' },
+      { name: 'Adecco Spain', url: 'https://www.adecco.es/', reason: 'Good for employment and temporary roles.' },
+      { name: 'Glassdoor Spain', url: 'https://www.glassdoor.es/', reason: 'Helpful for reviews and salary information.' },
+      { name: 'Monster Spain', url: 'https://www.monster.es/', reason: 'Useful for professional and office roles.' },
+      { name: 'Jooble Spain', url: 'https://es.jooble.org/', reason: 'Good aggregate search across multiple Spanish sites.' },
+      { name: 'Mil Anuncios', url: 'https://www.milanuncios.com/', reason: 'Useful for local work and role discovery.' },
+      { name: 'Remote OK', url: 'https://remoteok.com/', reason: 'Helpful for remote-friendly opportunities.' },
+    ],
+    India: [
+      { name: 'Naukri', url: 'https://www.naukri.com/', reason: 'One of the strongest Indian job portals.' },
+      { name: 'LinkedIn', url: 'https://www.linkedin.com/jobs/', reason: 'Very relevant across Indian employers and hiring teams.' },
+      { name: 'Indeed India', url: 'https://in.indeed.com/', reason: 'Very commonly used for local and national roles.' },
+      { name: 'Shine', url: 'https://www.shine.com/', reason: 'Popular for professional and corporate roles in India.' },
+      { name: 'TimesJobs', url: 'https://www.timesjobs.com/', reason: 'Strong local job board with wide recruiter coverage.' },
+      { name: 'Monster India', url: 'https://www.monsterindia.com/', reason: 'Relevant for many sectors and entry-level roles.' },
+      { name: 'Freshersworld', url: 'https://www.freshersworld.com/', reason: 'Strong for early career and campus hiring.' },
+      { name: 'Hirect', url: 'https://www.hirect.in/', reason: 'Useful for direct hiring and career networking.' },
+      { name: 'Glassdoor India', url: 'https://www.glassdoor.co.in/', reason: 'Helpful for salary and company reviews.' },
+      { name: 'Jooble India', url: 'https://in.jooble.org/', reason: 'Useful for aggregated searches across India.' },
+      { name: 'WorkIndia', url: 'https://www.workindia.in/', reason: 'Popular for local opportunities and fresher hiring.' },
+      { name: 'Remote OK', url: 'https://remoteok.com/', reason: 'Helpful for remote work and cross-border opportunities.' },
+    ],
+    Portugal: [
+      { name: 'LinkedIn', url: 'https://www.linkedin.com/jobs/', reason: 'Strong across Portuguese employers and talent networks.' },
+      { name: 'Indeed Portugal', url: 'https://pt.indeed.com/', reason: 'Very common for Portuguese job lists.' },
+      { name: 'NetEmpregos', url: 'https://www.netempregos.com.br/', reason: 'Useful for local Portuguese vacancies.' },
+      { name: 'Jobrapido', url: 'https://www.jobrapido.com/', reason: 'Strong for quick local job discovery.' },
+      { name: 'Catho Portugal', url: 'https://www.catho.pt/', reason: 'Popular job portal in Portugal.' },
+      { name: 'AubergeJobs', url: 'https://www.aubergejobs.com/', reason: 'Relevant for hospitality and tourism roles.' },
+      { name: 'Glassdoor Portugal', url: 'https://www.glassdoor.pt/', reason: 'Helpful for company and salary reviews.' },
+      { name: 'Jooble Portugal', url: 'https://pt.jooble.org/', reason: 'Useful aggregated search across multiple portals.' },
+      { name: 'Expresso Empregos', url: 'https://expressoemprego.pt/', reason: 'Helpful for local job searching in Portugal.' },
+      { name: 'Remote OK', url: 'https://remoteok.com/', reason: 'Useful for remote-first roles.' },
+      { name: 'Workana', url: 'https://www.workana.com/', reason: 'Useful for freelance and project work.' },
+      { name: 'Upwork', url: 'https://www.upwork.com/', reason: 'Useful for flexible contract and remote work.' },
+    ],
+    Netherlands: [
+      { name: 'LinkedIn', url: 'https://www.linkedin.com/jobs/', reason: 'Very relevant in the Netherlands for professional hiring.' },
+      { name: 'Indeed Netherlands', url: 'https://nl.indeed.com/', reason: 'Popular in the Dutch job market.' },
+      { name: 'Werk.nl', url: 'https://www.werk.nl/', reason: 'One of the main Dutch job platforms.' },
+      { name: 'Nationale Vacaturebank', url: 'https://www.nationalevacaturebank.nl/', reason: 'Useful for national and regional job ads.' },
+      { name: 'Randstad Netherlands', url: 'https://www.randstad.nl/', reason: 'Very common recruitment site in the Netherlands.' },
+      { name: 'Monster Netherlands', url: 'https://www.monsterboard.nl/', reason: 'Relevant for professional and office roles.' },
+      { name: 'Glassdoor Netherlands', url: 'https://www.glassdoor.nl/', reason: 'Helpful for employer reviews and salary insight.' },
+      { name: 'Jobat', url: 'https://www.jobat.be/', reason: 'Useful cross-border listings around the Netherlands region.' },
+      { name: 'Intermediair', url: 'https://www.intermediair.nl/', reason: 'Important in the Dutch professional job market.' },
+      { name: 'Jooble Netherlands', url: 'https://nl.jooble.org/', reason: 'Helpful for aggregated Dutch roles.' },
+      { name: 'Remote OK', url: 'https://remoteok.com/', reason: 'Useful for remote-friendly Dutch and EU roles.' },
+      { name: 'Vacatures', url: 'https://www.vacatures.com/', reason: 'Broad job board for Dutch employer listings.' },
+    ],
+    Italy: [
+      { name: 'LinkedIn', url: 'https://www.linkedin.com/jobs/', reason: 'Strong across Italian employers and networks.' },
+      { name: 'Indeed Italy', url: 'https://it.indeed.com/', reason: 'Popular in Italy for local role searches.' },
+      { name: 'InfoJobs Italy', url: 'https://www.infojobs.it/', reason: 'One of the leading Italian recruitment portals.' },
+      { name: 'Monster Italy', url: 'https://www.monster.it/', reason: 'Relevant across multiple sectors.' },
+      { name: 'Randstad Italy', url: 'https://www.randstad.it/', reason: 'Very strong in Italy for staffing and jobs.' },
+      { name: 'Adecco Italy', url: 'https://www.adecco.it/', reason: 'Useful for local hiring and temporary roles.' },
+      { name: 'Glassdoor Italy', url: 'https://www.glassdoor.it/', reason: 'Helpful for salary and employer research.' },
+      { name: 'Jobrapido Italy', url: 'https://www.jobrapido.it/', reason: 'Good local aggregator and job search tool.' },
+      { name: 'Jooble Italy', url: 'https://it.jooble.org/', reason: 'Useful for broad job searches.' },
+      { name: 'Remote OK', url: 'https://remoteok.com/', reason: 'Helpful for remote-friendly Italian companies.' },
+      { name: 'HelloWork', url: 'https://www.hellowork.com/', reason: 'Strong for structured hiring and local vacancies.' },
+      { name: 'ClicLavoro', url: 'https://www.cliclavoro.it/', reason: 'Useful for local and regional open positions.' },
+    ],
+    Australia: [
+      { name: 'Seek', url: 'https://www.seek.com.au/', reason: 'Australia’s most widely used job platform.' },
+      { name: 'LinkedIn', url: 'https://www.linkedin.com/jobs/', reason: 'Very relevant in the Australian market.' },
+      { name: 'Indeed Australia', url: 'https://au.indeed.com/', reason: 'Popular for local and national job searches.' },
+      { name: 'CareerOne', url: 'https://www.careerone.com.au/', reason: 'Strong national Australian job board.' },
+      { name: 'Jora Australia', url: 'https://au.jora.com/', reason: 'Useful for aggregated Australian listings.' },
+      { name: 'Adzuna Australia', url: 'https://www.adzuna.com.au/', reason: 'Popular for salary and role discovery.' },
+      { name: 'Glassdoor Australia', url: 'https://www.glassdoor.com.au/', reason: 'Useful for employer and salary insights.' },
+      { name: 'Hays Australia', url: 'https://www.hays.com.au/', reason: 'Strong recruitment platform in Australia.' },
+      { name: 'JobSearch', url: 'https://jobsearch.gov.au/', reason: 'Useful government and public-sector roles.' },
+      { name: 'Remote OK', url: 'https://remoteok.com/', reason: 'Helpful for remote-friendly Australia-based opportunities.' },
+      { name: 'Jobstreet Australia', url: 'https://www.jobstreet.com.au/', reason: 'Useful for many local and enterprise roles.' },
+      { name: 'Workable', url: 'https://www.workable.com/', reason: 'Strong employer hiring pages and job listings.' },
+    ],
+    Sweden: [
+      { name: 'Arbetsförmedlingen', url: 'https://arbetsformedlingen.se/', reason: 'Official Swedish public employment service.' },
+      { name: 'LinkedIn', url: 'https://www.linkedin.com/jobs/', reason: 'Strong in Sweden for professional hiring.' },
+      { name: 'Indeed Sweden', url: 'https://se.indeed.com/', reason: 'Popular local board for open roles.' },
+      { name: 'Jobbland', url: 'https://jobbland.com/', reason: 'Useful Swedish job search aggregator.' },
+      { name: 'Monster Sweden', url: 'https://www.monster.se/', reason: 'Relevant for career and office roles.' },
+      { name: 'Glassdoor Sweden', url: 'https://www.glassdoor.se/', reason: 'Helpful for salary and employer insight.' },
+      { name: 'Randstad Sweden', url: 'https://www.randstad.se/', reason: 'Strong recruitment platform in Sweden.' },
+      { name: 'Academic Positions', url: 'https://www.academicpositions.se/', reason: 'Useful for research and academic jobs.' },
+      { name: 'Jooble Sweden', url: 'https://se.jooble.org/', reason: 'Helpful for broader searches.' },
+      { name: 'Remote OK', url: 'https://remoteok.com/', reason: 'Useful for remote-friendly roles in Sweden.' },
+      { name: 'Careerjet Sweden', url: 'https://www.careerjet.se/', reason: 'Strong cross-site job search aggregator.' },
+      { name: 'Hays Sweden', url: 'https://www.hays.se/', reason: 'Relevant for professional and specialist recruitment.' },
+    ],
+    default: [
+      { name: 'LinkedIn', url: 'https://www.linkedin.com/jobs/', reason: 'Strongest global network for job discovery and recruiting.' },
+      { name: 'Indeed', url: 'https://www.indeed.com/', reason: 'One of the most widely used job search sites globally.' },
+      { name: 'Glassdoor', url: 'https://www.glassdoor.com/', reason: 'Helpful for employer research and salary insight.' },
+      { name: 'Jooble', url: 'https://jooble.org/', reason: 'Useful search aggregator across many countries and platforms.' },
+      { name: 'Remote OK', url: 'https://remoteok.com/', reason: 'Good for remote-first roles.' },
+      { name: 'Upwork', url: 'https://www.upwork.com/', reason: 'Useful for freelance and project-based positions.' },
+      { name: 'Workable', url: 'https://www.workable.com/', reason: 'Popular employer hiring pages and role boards.' },
+      { name: 'ZipRecruiter', url: 'https://www.ziprecruiter.com/', reason: 'Used widely for fast role discovery.' },
+      { name: 'Wellfound', url: 'https://wellfound.com/jobs', reason: 'Helpful for startup and product hiring.' },
+      { name: 'FlexJobs', url: 'https://www.flexjobs.com/', reason: 'Good for flexible and remote-friendly roles.' },
+      { name: 'Adzuna', url: 'https://www.adzuna.com/', reason: 'Strong aggregator in many countries.' },
+      { name: 'The Muse', url: 'https://www.themuse.com/', reason: 'Useful for employer brand and career discovery.' },
+    ],
+  }
+
+  const detectCountry = () => {
+    const combined = `${profile.address || ''} ${profile.nationality || ''}`.toLowerCase()
+
+    if (/(brazil|brasil|sao paulo|rio de janeiro|brazilian)/.test(combined)) return 'Brazil'
+    if (/(germany|deutschland|berlin|munich|hamburg|german)/.test(combined)) return 'Germany'
+    if (/(united states|usa|us|america|washington|new york|california|texas)/.test(combined)) return 'United States'
+    if (/(canada|ontario|toronto|vancouver|montreal|canadian)/.test(combined)) return 'Canada'
+    if (/(united kingdom|uk|england|london|manchester|britain|scotland|wales)/.test(combined)) return 'United Kingdom'
+    if (/(france|paris|francais|french)/.test(combined)) return 'France'
+    if (/(spain|madrid|barcelona|españa|spanish)/.test(combined)) return 'Spain'
+    if (/(india|mumbai|delhi|bengaluru|hyderabad|indian)/.test(combined)) return 'India'
+    if (/(portugal|lisbon|porto|portuguese)/.test(combined)) return 'Portugal'
+    if (/(netherlands|holland|amsterdam|rotterdam|dutch)/.test(combined)) return 'Netherlands'
+    if (/(italy|italia|milan|rome|naples|italian)/.test(combined)) return 'Italy'
+    if (/(australia|sydney|melbourne|brisbane|australian)/.test(combined)) return 'Australia'
+    if (/(sweden|stockholm|gothenburg|swedish)/.test(combined)) return 'Sweden'
+    if (/(mexico|mexican|mexico city|guadalajara|monterrey)/.test(combined)) return 'Mexico'
+    if (/(japan|tokyo|osaka|japanese|日本)/.test(combined)) return 'Japan'
+    if (/(south africa|johannesburg|cape town|south african)/.test(combined)) return 'South Africa'
+    if (/(uae|united arab emirates|dubai|abu dhabi|emirati)/.test(combined)) return 'United Arab Emirates'
+    return ''
+  }
+
+  const hasCvData = () => {
+    const hasName = !!profile.name?.trim()
+    const hasTitle = !!profile.title?.trim()
+    const hasEmail = !!profile.email?.trim()
+    const hasExperience = experience.some((item) => item.title?.trim() || item.description?.trim())
+    const hasEducation = education.some((item) => item.title?.trim() || item.description?.trim())
+    const hasSkills = skills.some((item) => item.label?.trim())
+    return hasName || hasTitle || hasEmail || hasExperience || hasEducation || hasSkills
+  }
+
+  const openJobHelp = () => {
+    if (!hasCvData()) {
+      setJobHelpCountry('')
+      setJobHelpConsent(false)
+      setJobHelpOpen(true)
+      return
+    }
+
+    const detectedCountry = detectCountry()
+    setJobHelpCountry(detectedCountry || 'Germany')
+    setJobHelpConsent(false)
+    setJobHelpOpen(true)
+  }
+
+  const recommendedJobSites = countryJobSites[jobHelpCountry] || countryJobSites.default
 
   const updateProfile = (key, value) => {
     setProfile((prev) => ({ ...prev, [key]: value }))
@@ -1260,8 +1511,72 @@ function App() {
           <button type="button" className="export-button secondary" onClick={exportAsImage}>
             {labels.downloadJpg}
           </button>
+          <button type="button" className="export-button tertiary" onClick={openJobHelp}>
+            Help Me Find a Job
+          </button>
         </div>
       </aside>
+
+      {jobHelpOpen && (
+        <div className="photo-crop-overlay" onClick={() => setJobHelpOpen(false)}>
+          <div className="photo-crop-dialog job-help-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="photo-crop-heading">
+              <h3>Help Me Find a Job</h3>
+              <button type="button" className="remove-button" onClick={() => setJobHelpOpen(false)}>Close</button>
+            </div>
+
+            {!hasCvData() ? (
+              <div className="job-help-message-block">
+                <p>Your CV is not ready yet. Please create your CV first before using this feature.</p>
+              </div>
+            ) : (
+              <>
+                <p className="job-help-info">We found an existing CV. Choose your target country and review relevant job platforms.</p>
+
+                <div className="field-group">
+                  <label>Country</label>
+                  <select value={jobHelpCountry} onChange={(event) => setJobHelpCountry(event.target.value)}>
+                    <option value="">Select a country</option>
+                    {Object.keys(countryJobSites).filter((country) => country !== 'default').map((country) => (
+                      <option key={country} value={country}>{country}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="job-help-sites">
+                  <h4>Recommended job platforms</h4>
+                  <ol>
+                    {(countryJobSites[jobHelpCountry] || countryJobSites.default).map((site, index) => (
+                      <li key={`${site.name}-${index}`}>
+                        <div className="job-site-row">
+                          <span className="job-site-rank">#{index + 1}</span>
+                          <a href={site.url} target="_blank" rel="noreferrer">{site.name}</a>
+                        </div>
+                        <small>{site.reason}</small>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              </>
+            )}
+
+            <label className="job-help-consent">
+              <input
+                type="checkbox"
+                checked={jobHelpConsent}
+                onChange={(event) => setJobHelpConsent(event.target.checked)}
+              />
+              <span>I understand that this tool provides local job recommendations in the app, and I agree to share my CV with the job platforms I choose to use to help me find jobs.</span>
+            </label>
+
+            <div className="export-actions job-help-actions">
+              <button type="button" className="export-button" onClick={() => setJobHelpOpen(false)}>
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main
         id="resume-preview"
