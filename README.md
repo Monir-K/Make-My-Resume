@@ -21,7 +21,7 @@ The website star button uses a Cloudflare Pages Function at `/api/stars` and a D
 
 1. Create a D1 database from the Cloudflare dashboard, or run `npx wrangler d1 create resume-builder-stars`.
 2. Apply `migrations/0001_create_stars.sql` to that database. With Wrangler, run `npx wrangler d1 execute resume-builder-stars --remote --file=migrations/0001_create_stars.sql`.
-3. In Cloudflare Pages, open the `Make-My-Resume` project settings, go to **Functions > D1 database bindings**, and add a binding named `STARS_DB` connected to the database.
+3. In Cloudflare Pages, open the `Make-My-Resume` project settings, go to **Functions > D1 database bindings**, and bind the database as `STARS_DB` or `stars_db`. The current Cloudflare configuration uses `stars_db`, which is supported.
 4. Redeploy the Pages project so the Function receives the binding.
 
-Until the `STARS_DB` binding is configured and the schema is applied, the star control reports that counting is unavailable and does not record a vote.
+Until the D1 binding is active and the schema is applied, the star control reports that counting is unavailable and does not record a vote.
