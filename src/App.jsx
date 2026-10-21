@@ -712,6 +712,11 @@ function App() {
   const [teaThanks, setTeaThanks] = useState(false)
   const [printPreview, setPrintPreview] = useState(null)
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false)
+  const [siteStarCount, setSiteStarCount] = useState(null)
+  const [siteStarred, setSiteStarred] = useState(false)
+  const [siteStarAvailable, setSiteStarAvailable] = useState(false)
+  const [siteStarPending, setSiteStarPending] = useState(false)
+  const [siteStarMessage, setSiteStarMessage] = useState('')
   const downloadMenuRef = useRef(null)
   const downloadTriggerRef = useRef(null)
   const printPreviewTriggerRef = useRef(null)
@@ -793,6 +798,54 @@ function App() {
       document.removeEventListener('keydown', onKeyDown)
     }
   }, [downloadMenuOpen])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadSiteStars = async () => {
+      try {
+        const response = await fetch('/api/stars', { cache: 'no-store', credentials: 'same-origin' })
+        if (!response.ok) throw new Error('Star count is unavailable')
+        const result = await response.json()
+        if (cancelled) return
+        setSiteStarCount(result.count)
+        setSiteStarred(result.starred)
+        setSiteStarAvailable(true)
+      } catch {
+        if (!cancelled) {
+          setSiteStarAvailable(false)
+          setSiteStarMessage('Stars are not configured yet.')
+        }
+      }
+    }
+
+    loadSiteStars()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const starWebsite = async () => {
+    if (!siteStarAvailable || siteStarred || siteStarPending) return
+
+    setSiteStarPending(true)
+    setSiteStarMessage('')
+    try {
+      const response = await fetch('/api/stars', {
+        method: 'POST',
+        credentials: 'same-origin',
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Your star could not be saved.')
+      setSiteStarCount(result.count)
+      setSiteStarred(result.starred)
+      setSiteStarMessage('Thanks for starring this site!')
+    } catch {
+      setSiteStarMessage('Your star could not be saved. Please try again later.')
+    } finally {
+      setSiteStarPending(false)
+    }
+  }
 
   const countryJobSites = {
     Brazil: [
@@ -1371,7 +1424,24 @@ function App() {
       </button>
 
       <aside className="editor-panel">
-        <h2>{labels.builder}</h2>
+        <div className="editor-heading-row">
+          <h2>{labels.builder}</h2>
+          <div className="site-star-control">
+            <button
+              type="button"
+              className={`site-star-button${siteStarred ? ' is-starred' : ''}`}
+              aria-label={siteStarred ? `You starred this site. ${siteStarCount} total stars.` : `Star this site. ${siteStarCount ?? 'Count unavailable'} total stars. One star per browser; no account required.`}
+              title="One star per browser. No account required."
+              aria-pressed={siteStarred}
+              disabled={!siteStarAvailable || siteStarred || siteStarPending}
+              onClick={starWebsite}
+            >
+              <span className="site-star-icon" aria-hidden="true">{siteStarred ? '★' : '☆'}</span>
+              <span>{siteStarAvailable ? `${siteStarred ? 'Starred' : 'Star'} · ${siteStarCount}` : 'Star unavailable'}</span>
+            </button>
+            {siteStarMessage && <span className="site-star-message" role="status">{siteStarMessage}</span>}
+          </div>
+        </div>
 
         <div className="field-group">
           <label>{labels.templateStyle}</label>

@@ -20,6 +20,78 @@
   font-size: 1.5rem;
 }
 
+.editor-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.editor-heading-row h2 {
+  min-width: 0;
+  margin: 0;
+}
+
+.site-star-control {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.site-star-button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 9px;
+  border: 1px solid #d8dfc7;
+  border-radius: 5px;
+  background: #fbfcf5;
+  color: #455b3b;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.site-star-button:hover:not(:disabled) {
+  border-color: #a8b68c;
+  background: #f0f4e5;
+}
+
+.site-star-button:focus-visible {
+  outline: 3px solid #a95e42;
+  outline-offset: 2px;
+}
+
+.site-star-button:disabled {
+  cursor: default;
+  opacity: 0.78;
+}
+
+.site-star-button.is-starred {
+  border-color: #cdb56a;
+  background: #fff8df;
+  color: #795d16;
+}
+
+.site-star-icon {
+  color: #a77818;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.site-star-message {
+  max-width: 200px;
+  color: #69756e;
+  font-size: 0.66rem;
+  line-height: 1.25;
+  text-align: right;
+}
+
 .field-group,
 .field-section {
   margin-bottom: 18px;
