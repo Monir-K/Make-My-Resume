@@ -711,6 +711,9 @@ function App() {
   const [teaSupportOpen, setTeaSupportOpen] = useState(false)
   const [teaThanks, setTeaThanks] = useState(false)
   const [printPreview, setPrintPreview] = useState(null)
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false)
+  const downloadMenuRef = useRef(null)
+  const downloadTriggerRef = useRef(null)
   const printPreviewTriggerRef = useRef(null)
   const printPreviewDialogRef = useRef(null)
   const printPreviewCloseRef = useRef(null)
@@ -769,6 +772,27 @@ function App() {
       trigger?.focus()
     }
   }, [printPreview])
+
+  useEffect(() => {
+    if (!downloadMenuOpen) return undefined
+
+    const onPointerDown = (event) => {
+      if (!downloadMenuRef.current?.contains(event.target)) setDownloadMenuOpen(false)
+    }
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setDownloadMenuOpen(false)
+        downloadTriggerRef.current?.focus()
+      }
+    }
+
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [downloadMenuOpen])
 
   const countryJobSites = {
     Brazil: [
@@ -1219,13 +1243,31 @@ function App() {
     return canvas
   }
 
-  const exportAsImage = async () => {
-    const canvas = createA4Canvas(await captureStyledPreview())
-    const image = canvas.toDataURL('image/jpeg', 0.94)
-    const link = document.createElement('a')
-    link.href = image
-    link.download = `${(profile.name || 'cv').replace(/\s+/g, '_')}.jpg`
-    link.click()
+  const exportAsPng = async () => {
+    try {
+      const canvas = createA4Canvas(await captureStyledPreview())
+      const image = await new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob)
+          else reject(new Error('Could not encode the CV as a PNG image'))
+        }, 'image/png')
+      })
+      const imageUrl = URL.createObjectURL(image)
+      const link = document.createElement('a')
+      link.href = imageUrl
+      link.download = `${(profile.name || 'cv').replace(/\s+/g, '_')}.png`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.setTimeout(() => URL.revokeObjectURL(imageUrl), 1000)
+    } catch {
+      window.alert('The CV could not be prepared as a PNG image. Please try again.')
+    }
+  }
+
+  const chooseDownload = (downloadAction) => {
+    setDownloadMenuOpen(false)
+    downloadAction()
   }
 
   const openCvPrintView = async (printAfterOpen = false) => {
@@ -1641,14 +1683,32 @@ function App() {
         </div>
 
         <div className="export-actions">
-          <button type="button" className="export-button" onClick={exportAsPdf}>
-            {labels.downloadPdf}
-          </button>
+          <div className="download-menu" ref={downloadMenuRef}>
+            <button
+              ref={downloadTriggerRef}
+              type="button"
+              className="export-button download-trigger"
+              aria-haspopup="menu"
+              aria-expanded={downloadMenuOpen}
+              onClick={() => setDownloadMenuOpen((open) => !open)}
+            >
+              Download <span className="download-chevron" aria-hidden="true">▾</span>
+            </button>
+            {downloadMenuOpen && (
+              <div className="download-menu-list" role="menu" aria-label="Choose a download format">
+                <button type="button" role="menuitem" onClick={() => chooseDownload(exportAsPdf)}>
+                  <span className="download-format-icon pdf-icon" aria-hidden="true">PDF</span>
+                  <span><strong>PDF</strong><small>Print-ready document</small></span>
+                </button>
+                <button type="button" role="menuitem" onClick={() => chooseDownload(exportAsPng)}>
+                  <span className="download-format-icon png-icon" aria-hidden="true">PNG</span>
+                  <span><strong>PNG</strong><small>High-quality image</small></span>
+                </button>
+              </div>
+            )}
+          </div>
           <button ref={printPreviewTriggerRef} type="button" className="export-button preview" onClick={openPrintPreview}>
             Print Preview
-          </button>
-          <button type="button" className="export-button secondary" onClick={exportAsImage}>
-            {labels.downloadJpg}
           </button>
           <button type="button" className="export-button tertiary" onClick={openJobHelp}>
             Help Me Find a Job
