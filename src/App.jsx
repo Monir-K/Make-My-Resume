@@ -1685,7 +1685,10 @@ function App() {
         <div className="export-actions">
           <div className="download-menu" ref={downloadMenuRef}>
             <button
-              ref={downloadTriggerRef}
+              ref={(element) => {
+                downloadTriggerRef.current = element
+                printPreviewTriggerRef.current = element
+              }}
               type="button"
               className="export-button download-trigger"
               aria-haspopup="menu"
@@ -1704,12 +1707,13 @@ function App() {
                   <span className="download-format-icon png-icon" aria-hidden="true">PNG</span>
                   <span><strong>PNG</strong><small>High-quality image</small></span>
                 </button>
+                <button type="button" role="menuitem" onClick={() => chooseDownload(openPrintPreview)}>
+                  <span className="download-format-icon preview-icon" aria-hidden="true">PRE</span>
+                  <span><strong>Print Preview</strong><small>See your CV on paper</small></span>
+                </button>
               </div>
             )}
           </div>
-          <button ref={printPreviewTriggerRef} type="button" className="export-button preview" onClick={openPrintPreview}>
-            Print Preview
-          </button>
           <button type="button" className="export-button tertiary" onClick={openJobHelp}>
             Help Me Find a Job
           </button>

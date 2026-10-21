@@ -1487,6 +1487,12 @@
   background: #f1f7f1;
 }
 
+.preview-icon {
+  color: #4b5965;
+  background: #f1f4f6;
+  font-size: 0.56rem;
+}
+
 .fullscreen-toggle {
   position: fixed;
   top: max(14px, env(safe-area-inset-top));
@@ -2239,15 +2245,19 @@
   }
 
   .editor-panel > .export-actions .export-button.tertiary {
-    grid-column: 1;
-  }
-
-  .editor-panel > .export-actions .export-button.preview {
     grid-column: 2;
   }
 
   .editor-panel > .export-actions .download-menu {
     grid-column: 1;
+  }
+}
+
+@media (max-width: 560px) {
+  .editor-panel > .export-actions .export-button.tertiary {
+    padding-right: 7px;
+    padding-left: 7px;
+    font-size: 0.78rem;
   }
 }
 
