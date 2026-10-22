@@ -25,3 +25,7 @@ The website star button uses a Cloudflare Pages Function at `/api/stars` and a D
 4. Redeploy the Pages project so the Function receives the binding.
 
 Until the D1 binding is active and the schema is applied, the star control reports that counting is unavailable and does not record a vote.
+
+## Import an existing resume
+
+The editor can import text-based PDF, DOCX, and TXT resumes. Parsing happens in the browser; the file is not uploaded. Detected contact details, summary, skills, experience, and education are shown in an editable review dialog before they are applied. Empty or unrecognized fields keep their existing values. Scanned image-only PDFs are not OCR'd and cannot be imported as text.

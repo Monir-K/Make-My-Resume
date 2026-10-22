@@ -717,6 +717,14 @@ function App() {
   const [siteStarAvailable, setSiteStarAvailable] = useState(false)
   const [siteStarPending, setSiteStarPending] = useState(false)
   const [siteStarMessage, setSiteStarMessage] = useState('')
+  const [resumeImportOpen, setResumeImportOpen] = useState(false)
+  const [resumeImportDraft, setResumeImportDraft] = useState(null)
+  const [resumeImportError, setResumeImportError] = useState('')
+  const [resumeImporting, setResumeImporting] = useState(false)
+  const resumeImportTriggerRef = useRef(null)
+  const resumeImportDialogRef = useRef(null)
+  const resumeImportCloseRef = useRef(null)
+  const resumeImportInputRef = useRef(null)
   const downloadMenuRef = useRef(null)
   const downloadTriggerRef = useRef(null)
   const printPreviewTriggerRef = useRef(null)
@@ -798,6 +806,41 @@ function App() {
       document.removeEventListener('keydown', onKeyDown)
     }
   }, [downloadMenuOpen])
+
+  useEffect(() => {
+    if (!resumeImportOpen) return undefined
+
+    const trigger = resumeImportTriggerRef.current
+    const dialog = resumeImportDialogRef.current
+    const focusableElements = () => [...dialog.querySelectorAll('button:not([disabled]), input:not([disabled]), textarea:not([disabled])')]
+    resumeImportCloseRef.current?.focus()
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setResumeImportOpen(false)
+        return
+      }
+
+      if (event.key === 'Tab') {
+        const elements = focusableElements()
+        const first = elements[0]
+        const last = elements[elements.length - 1]
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault()
+          last?.focus()
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault()
+          first?.focus()
+        }
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      trigger?.focus()
+    }
+  }, [resumeImportOpen])
 
   useEffect(() => {
     let cancelled = false
@@ -1193,6 +1236,66 @@ function App() {
     event.target.value = ''
   }
 
+  const handleResumeImport = async (event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+
+    setResumeImporting(true)
+    setResumeImportError('')
+    try {
+      const { extractResumeText, parseResumeText } = await import('./resumeImport.js')
+      const text = await extractResumeText(file)
+      const parsed = parseResumeText(text)
+      const hasRecognizedData = Object.values(parsed.profile).some(Boolean) || parsed.skills.length || parsed.education.length || parsed.experience.length
+
+      if (!hasRecognizedData) {
+        throw new Error('No readable resume details were found. Scanned PDFs need OCR and are not supported yet.')
+      }
+
+      setResumeImportDraft({ ...parsed, fileName: file.name })
+      setResumeImportOpen(true)
+    } catch (error) {
+      setResumeImportError(error.message || 'This resume could not be read. Try a text-based PDF, DOCX, or TXT file.')
+    } finally {
+      setResumeImporting(false)
+    }
+  }
+
+  const updateResumeImportProfile = (key, value) => {
+    setResumeImportDraft((draft) => ({ ...draft, profile: { ...draft.profile, [key]: value } }))
+  }
+
+  const updateResumeImportEntries = (key, value) => {
+    const entries = value.split('\n').map((line) => {
+      const [year = '', title = '', ...description] = line.split('|').map((part) => part.trim())
+      return { year, title, description: description.join(' | ') }
+    }).filter((entry) => entry.year || entry.title || entry.description)
+    setResumeImportDraft((draft) => ({ ...draft, [key]: entries }))
+  }
+
+  const applyResumeImport = () => {
+    if (!resumeImportDraft) return
+
+    setProfile((current) => Object.fromEntries(Object.entries(current).map(([key, value]) => [
+      key,
+      resumeImportDraft.profile[key]?.trim() ? resumeImportDraft.profile[key].trim() : value,
+    ])))
+
+    if (resumeImportDraft.skills.length) {
+      setSkills(resumeImportDraft.skills.map((label) => {
+        const existing = skills.find((skill) => skill.label.toLowerCase() === label.toLowerCase())
+        return { label, value: existing?.value ?? 75 }
+      }))
+    }
+    if (resumeImportDraft.education.length) setEducation(resumeImportDraft.education)
+    if (resumeImportDraft.experience.length) setExperience(resumeImportDraft.experience)
+
+    setResumeImportOpen(false)
+    setResumeImportDraft(null)
+    setResumeImportError('')
+  }
+
   const applyPhotoCrop = async () => {
     if (!cropSource) return
 
@@ -1441,6 +1544,28 @@ function App() {
             </button>
             {siteStarMessage && <span className="site-star-message" role="status">{siteStarMessage}</span>}
           </div>
+        </div>
+
+        <div className="resume-import-toolbar">
+          <input
+            ref={resumeImportInputRef}
+            className="resume-import-file-input"
+            type="file"
+            accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+            onChange={handleResumeImport}
+            aria-label="Choose an existing resume to import"
+          />
+          <button
+            ref={resumeImportTriggerRef}
+            type="button"
+            className="resume-import-button"
+            disabled={resumeImporting}
+            onClick={() => resumeImportInputRef.current?.click()}
+          >
+            <span aria-hidden="true">↑</span> {resumeImporting ? 'Reading resume…' : 'Import resume'}
+          </button>
+          <span className="resume-import-note">PDF, DOCX or TXT · scanned PDFs need OCR · stays on this device</span>
+          {resumeImportError && <span className="resume-import-error" role="alert">{resumeImportError}</span>}
         </div>
 
         <div className="field-group">
@@ -1789,6 +1914,47 @@ function App() {
           </button>
         </div>
       </aside>
+
+      {resumeImportOpen && resumeImportDraft && (
+        <div className="resume-import-overlay" onClick={() => setResumeImportOpen(false)}>
+          <section
+            className="resume-import-dialog"
+            ref={resumeImportDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="resume-import-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="resume-import-heading">
+              <div>
+                <span>REVIEW BEFORE APPLYING</span>
+                <h2 id="resume-import-title">Import your resume</h2>
+                <p>{resumeImportDraft.fileName} · Your file stays on this device.</p>
+              </div>
+              <button ref={resumeImportCloseRef} type="button" className="print-preview-close" onClick={() => setResumeImportOpen(false)}>Close</button>
+            </header>
+
+            <p className="resume-import-guidance">Check and edit the details we found. Empty fields will keep their current values.</p>
+
+            <div className="resume-import-fields">
+              <label>Name<input value={resumeImportDraft.profile.name} onChange={(event) => updateResumeImportProfile('name', event.target.value)} /></label>
+              <label>Job title<input value={resumeImportDraft.profile.title} onChange={(event) => updateResumeImportProfile('title', event.target.value)} /></label>
+              <label>Email<input type="email" value={resumeImportDraft.profile.email} onChange={(event) => updateResumeImportProfile('email', event.target.value)} /></label>
+              <label>Phone<input value={resumeImportDraft.profile.phone} onChange={(event) => updateResumeImportProfile('phone', event.target.value)} /></label>
+              <label>Website<input value={resumeImportDraft.profile.website} onChange={(event) => updateResumeImportProfile('website', event.target.value)} /></label>
+              <label className="resume-import-wide">Summary<textarea rows="3" value={resumeImportDraft.profile.about} onChange={(event) => updateResumeImportProfile('about', event.target.value)} /></label>
+              <label className="resume-import-wide">Skills <span className="resume-import-field-note">Separate skills with commas</span><textarea rows="2" value={resumeImportDraft.skills.join(', ')} onChange={(event) => setResumeImportDraft((draft) => ({ ...draft, skills: event.target.value.split(',').map((skill) => skill.trim()).filter(Boolean) }))} /></label>
+              <label className="resume-import-wide">Experience <span className="resume-import-field-note">One entry per line: dates | role | details</span><textarea rows="4" value={resumeImportDraft.experience.map((entry) => [entry.year, entry.title, entry.description].filter(Boolean).join(' | ')).join('\n')} onChange={(event) => updateResumeImportEntries('experience', event.target.value)} /></label>
+              <label className="resume-import-wide">Education <span className="resume-import-field-note">One entry per line: dates | qualification | details</span><textarea rows="4" value={resumeImportDraft.education.map((entry) => [entry.year, entry.title, entry.description].filter(Boolean).join(' | ')).join('\n')} onChange={(event) => updateResumeImportEntries('education', event.target.value)} /></label>
+            </div>
+
+            <footer className="resume-import-actions">
+              <button type="button" className="print-preview-close" onClick={() => setResumeImportOpen(false)}>Cancel</button>
+              <button type="button" className="export-button" onClick={applyResumeImport}>Apply imported details</button>
+            </footer>
+          </section>
+        </div>
+      )}
 
       {printPreview && (
         <div className="print-preview-overlay" onClick={() => setPrintPreview(null)}>
