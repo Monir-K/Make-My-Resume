@@ -1,17 +1,48 @@
+const normalizeText = (value) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
 const headingAliases = {
-  summary: /^(professional\s+)?(summary|profile|objective|about(?:\s+me)?)$/i,
-  skills: /^(technical\s+)?skills|core competencies|key competencies$/i,
-  education: /^(education|academic background|qualifications|training)$/i,
-  experience: /^(work experience|professional experience|employment history|experience|career history)$/i,
+  summary: /^(professional\s+)?(summary|profile|objective|about(?:\s+me)?|o\s+sobre\s+mim|sobre\s+mim|perfil(?:\s+profissional)?)$/,
+  skills: /^(technical\s+)?(skills|habilidades|competencias|competencias\s+tecnicas|core competencies|key competencies)$/,
+  education: /^(education|educacao|formacao(?:\s+academica)?|academic background|qualifications|training)$/,
+  experience: /^(work experience|professional experience|employment history|experience|experiencia(?:\s+profissional)?|historico profissional|career history)$/,
 }
 
-const cleanLine = (line) => line.replace(/^[\s•*\-–—]+/, '').trim()
-const isDateLine = (line) => /\b(?:19|20)\d{2}\b/.test(line) || /\b(present|current)\b/i.test(line)
+const nonNameHeadings = new Set([
+  'resume', 'curriculum vitae', 'cv', 'informacoes pessoais', 'informacoes pessoais e contato',
+  'personal information', 'contact', 'contato', 'contact information', 'habilidades', 'skills',
+  'idiomas', 'languages', 'hobbies', 'o sobre mim', 'sobre mim', 'about me', 'educacao', 'education',
+  'experiencia', 'experience', 'experiencia profissional', 'formacao academica', 'summary',
+  'professional summary', 'perfil profissional', 'objetivo',
+])
+const otherSectionHeadings = new Set([
+  'informacoes pessoais', 'informacoes pessoais e contato', 'personal information', 'contact',
+  'contato', 'contact information', 'idiomas', 'languages', 'hobbies', 'interesses',
+])
 
-const parseEntries = (sectionText) => sectionText
-  .split(/\n\s*\n/)
-  .map((block) => block.split('\n').map(cleanLine).filter(Boolean))
-  .filter((lines) => lines.length)
+const cleanLine = (line) => line.replace(/^[\s•*\-–—]+/, '').trim()
+const isDateLine = (line) => /\b(?:19|20)\d{2}\b/.test(line) || /\b(present|current|atual)\b/i.test(line)
+
+const splitEntryBlocks = (sectionText) => {
+  const blocks = []
+  let currentBlock = []
+
+  for (const line of sectionText.split('\n').map(cleanLine)) {
+    if (!line) {
+      if (currentBlock.length) blocks.push(currentBlock)
+      currentBlock = []
+      continue
+    }
+    if (isDateLine(line) && currentBlock.length) {
+      blocks.push(currentBlock)
+      currentBlock = []
+    }
+    currentBlock.push(line)
+  }
+  if (currentBlock.length) blocks.push(currentBlock)
+  return blocks
+}
+
+const parseEntries = (sectionText) => splitEntryBlocks(sectionText)
   .map((lines) => {
     const pipeLine = lines.find((line) => line.includes('|'))
     if (pipeLine) {
@@ -41,7 +72,11 @@ export const parseResumeText = (sourceText) => {
       if (currentSection && sections[currentSection].at(-1) !== '') sections[currentSection].push('')
       continue
     }
-    const normalizedHeading = line.replace(/[:|]+$/, '').trim()
+    const normalizedHeading = normalizeText(line.replace(/[:|]+$/, '').trim())
+    if (otherSectionHeadings.has(normalizedHeading)) {
+      currentSection = ''
+      continue
+    }
     const matchedSection = Object.entries(headingAliases).find(([, pattern]) => pattern.test(normalizedHeading))?.[0]
     if (matchedSection) {
       currentSection = matchedSection
@@ -54,18 +89,26 @@ export const parseResumeText = (sourceText) => {
   const phone = text.match(/(?:\+?\d[\d().\s-]{6,}\d)/)?.[0]?.trim() || ''
   const websitePattern = /(?:https?:\/\/|www\.)[^\s]+|\b[A-Za-z0-9-]+\.(?:com|net|org|io|co|dev|me)\b(?:\/[\w./-]*)?/i
   const website = lines.find((line) => !line.includes('@') && websitePattern.test(line))?.match(websitePattern)?.[0] || ''
-  const name = lines.find((line) =>
-    !line.includes('@') &&
-    !isDateLine(line) &&
-    !Object.values(headingAliases).some((pattern) => pattern.test(line.replace(/[:|]+$/, '').trim())) &&
-    !/^(resume|curriculum vitae|cv)$/i.test(line) &&
-    line.split(/\s+/).length >= 2 &&
-    line.length <= 60 &&
-    (email || phone || website || sections.summary.length || sections.skills.length || sections.education.length || sections.experience.length || lines.length > 1),
-  ) || ''
-  const title = name ? lines.slice(lines.indexOf(name) + 1).find((line) =>
-    line !== email && line !== phone && line !== website && !isDateLine(line) && line.length <= 90,
-  ) || '' : ''
+  const nameCandidates = lines.map((line, index) => ({ line, index, normalized: normalizeText(line.replace(/[:|]+$/, '').trim()) }))
+    .filter(({ line, normalized }) => {
+      const wordCount = line.split(/\s+/).length
+      return !line.includes('@') &&
+        !isDateLine(line) &&
+        !Object.values(headingAliases).some((pattern) => pattern.test(normalized)) &&
+        !nonNameHeadings.has(normalized) &&
+        !/^\d/.test(line) &&
+        !/[.!?;:@]/.test(line) &&
+        /^[\p{L}][\p{L}'’-]*(?:\s+[\p{L}][\p{L}'’-]*){1,3}$/u.test(line) &&
+        wordCount >= 2 && line.length <= 48
+    })
+  const nameCandidate = nameCandidates.find(({ line }) => line === line.toLocaleUpperCase()) || nameCandidates[0]
+  const name = nameCandidate?.line || ''
+  const title = nameCandidate ? lines.slice(nameCandidate.index + 1).find((line) => {
+    const normalized = normalizeText(line)
+    return line !== email && line !== phone && line !== website && !isDateLine(line) && line.length <= 90 &&
+      !Object.values(headingAliases).some((pattern) => pattern.test(normalized)) &&
+      !nonNameHeadings.has(normalized) && !line.includes('@')
+  }) || '' : ''
 
   return {
     profile: {

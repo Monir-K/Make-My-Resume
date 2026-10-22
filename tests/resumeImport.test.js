@@ -77,3 +77,42 @@ Improved onboarding and design systems.
     description: 'Improved onboarding and design systems.',
   }])
 })
+
+test('recognizes Portuguese CV headings and prioritizes the uppercase candidate name', () => {
+  const parsed = parseResumeText(`
+O SOBRE MIM
+Kamjo é um engenheiro técnico com mais de dez anos de experiência em soluções técnicas.
+EDUCAÇÃO
+2010-2012
+Bacharelado em Economia - Kabul Institute of Business and Accounting
+Administração de Empresas e Contabilidade.
+2015-2017
+Ciência da Computação - ATV Institute
+Redes, hardware, troubleshooting e reparo.
+EXPERIÊNCIA
+2024-2026
+ABC Technology group - Brazil (Hybrid)
+Suporte Técnico, Suporte Windows e Analista de Sistemas.
+2013-2012
+Engenheiro Técnico - Afeganistão (fulltime)
+Administração Técnica do Governo.
+HABILIDADES
+Pacote Office, HTML, Banco de dados
+INFORMAÇÕES PESSOAIS
+AHMAD MONIR KAMJO
+DESENVOLVEDOR
+CONTATO
+Moner.kamju@gmail.com
+07176-660
+`)
+
+  assert.equal(parsed.profile.name, 'AHMAD MONIR KAMJO')
+  assert.equal(parsed.profile.title, 'DESENVOLVEDOR')
+  assert.equal(parsed.profile.email, 'Moner.kamju@gmail.com')
+  assert.equal(parsed.profile.about, 'Kamjo é um engenheiro técnico com mais de dez anos de experiência em soluções técnicas.')
+  assert.deepEqual(parsed.skills, ['Pacote Office', 'HTML', 'Banco de dados'])
+  assert.equal(parsed.education.length, 2)
+  assert.equal(parsed.education[0].title, 'Bacharelado em Economia - Kabul Institute of Business and Accounting')
+  assert.equal(parsed.experience.length, 2)
+  assert.equal(parsed.experience[0].title, 'ABC Technology group - Brazil (Hybrid)')
+})
