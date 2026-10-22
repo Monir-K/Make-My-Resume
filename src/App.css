@@ -132,9 +132,16 @@
 }
 
 .resume-import-note,
-.resume-import-error {
+.resume-import-error,
+.resume-import-status {
   color: #69756e;
   font-size: 0.72rem;
+}
+
+.resume-import-status {
+  flex-basis: 100%;
+  color: #315c4b;
+  line-height: 1.4;
 }
 
 .resume-import-error {

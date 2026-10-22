@@ -13,6 +13,13 @@ const parseEntries = (sectionText) => sectionText
   .map((block) => block.split('\n').map(cleanLine).filter(Boolean))
   .filter((lines) => lines.length)
   .map((lines) => {
+    const pipeLine = lines.find((line) => line.includes('|'))
+    if (pipeLine) {
+      const [year = '', title = '', ...description] = pipeLine.split('|').map(cleanLine)
+      const followingLines = lines.filter((line) => line !== pipeLine)
+      return { year, title, description: [description.join(' | '), ...followingLines].filter(Boolean).join(' ') }
+    }
+
     const dateIndex = lines.findIndex(isDateLine)
     const year = dateIndex >= 0 ? lines[dateIndex] : ''
     const titleIndex = dateIndex === 0 && lines.length > 1 ? 1 : 0
@@ -75,7 +82,79 @@ export const parseResumeText = (sourceText) => {
   }
 }
 
-export const extractResumeText = async (file) => {
+const createOcrWorker = async (onProgress) => {
+  const { createWorker } = await import('tesseract.js')
+  return createWorker('eng', 1, {
+    workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/worker.min.js',
+    corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@7.0.0',
+    langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+    gzip: true,
+    logger: ({ status, progress }) => onProgress?.({ status, progress }),
+  })
+}
+
+const recognizeImage = async (file, onProgress) => {
+  onProgress?.({ status: 'Loading English OCR data (first use may take a moment)', progress: 0 })
+  const worker = await createOcrWorker(onProgress)
+  try {
+    const result = await worker.recognize(file)
+    return result.data.text
+  } finally {
+    await worker.terminate()
+  }
+}
+
+const renderPdfPage = async (page) => {
+  const originalViewport = page.getViewport({ scale: 1 })
+  const scale = Math.min(2, 1800 / originalViewport.width)
+  const viewport = page.getViewport({ scale })
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.ceil(viewport.width)
+  canvas.height = Math.ceil(viewport.height)
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('This PDF page could not be prepared for text recognition.')
+  await page.render({ canvas, canvasContext: context, viewport }).promise
+  return canvas
+}
+
+const extractPdfText = async (file, onProgress) => {
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
+  const workerUrl = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')).default
+  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
+  const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise
+  if (pdf.numPages > 25) throw new Error('PDF resumes can contain up to 25 pages.')
+
+  const pages = []
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    onProgress?.({ status: `Reading PDF page ${pageNumber} of ${pdf.numPages}`, progress: pageNumber / pdf.numPages })
+    const page = await pdf.getPage(pageNumber)
+    const content = await page.getTextContent()
+    const text = content.items.map((item) => `${item.str}${item.hasEOL ? '\n' : ' '}`).join('').trim()
+    pages.push({ page, text })
+  }
+
+  const pagesNeedingOcr = pages.filter(({ text }) => text.length < 24)
+  if (!pagesNeedingOcr.length) return pages.map(({ text }) => text).join('\n')
+  if (pagesNeedingOcr.length > 5) throw new Error('Scanned PDFs can have up to 5 pages for OCR. Please use a smaller file or a text-based PDF.')
+
+  onProgress?.({ status: 'This PDF is scanned. Preparing OCR for image pages…', progress: 0 })
+  const worker = await createOcrWorker(onProgress)
+  try {
+    let recognizedPage = 0
+    for (const entry of pages) {
+      if (entry.text.length >= 24) continue
+      recognizedPage += 1
+      onProgress?.({ status: `Recognizing scanned PDF page ${recognizedPage} of ${pagesNeedingOcr.length}`, progress: recognizedPage / pagesNeedingOcr.length })
+      entry.text = (await worker.recognize(await renderPdfPage(entry.page))).data.text
+    }
+  } finally {
+    await worker.terminate()
+  }
+
+  return pages.map(({ text }) => text).join('\n')
+}
+
+export const extractResumeText = async (file, onProgress) => {
   const extension = file.name.split('.').pop()?.toLowerCase()
   if (file.size > 12 * 1024 * 1024) throw new Error('Choose a resume smaller than 12 MB.')
 
@@ -87,20 +166,11 @@ export const extractResumeText = async (file) => {
     return result.value
   }
 
-  if (extension === 'pdf') {
-    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
-    const workerUrl = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')).default
-    pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
-    const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise
-    if (pdf.numPages > 25) throw new Error('PDF resumes can contain up to 25 pages.')
-    const pages = []
-    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-      const page = await pdf.getPage(pageNumber)
-      const content = await page.getTextContent()
-      pages.push(content.items.map((item) => `${item.str}${item.hasEOL ? '\n' : ' '}`).join(''))
-    }
-    return pages.join('\n')
+  if (extension === 'pdf') return extractPdfText(file, onProgress)
+
+  if (['jpg', 'jpeg', 'png', 'webp', 'bmp', 'tif', 'tiff'].includes(extension)) {
+    return recognizeImage(file, onProgress)
   }
 
-  throw new Error('Choose a PDF, DOCX, or TXT resume file.')
+  throw new Error('Choose a PDF, DOCX, TXT, JPG, PNG, WebP, BMP, or TIFF resume file.')
 }

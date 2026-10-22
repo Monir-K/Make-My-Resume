@@ -60,3 +60,20 @@ test('recognizes a realistic text resume fixture', async () => {
   assert.equal(parsed.experience[0].title, 'UX Designer')
   assert.equal(parsed.education[0].title, 'Bachelor of Design')
 })
+
+test('parses pipe-separated work details commonly returned by OCR', () => {
+  const parsed = parseResumeText(`
+Casey Taylor
+casey@example.com
+
+EXPERIENCE
+2021 - Present | UX Designer
+Improved onboarding and design systems.
+`)
+
+  assert.deepEqual(parsed.experience, [{
+    year: '2021 - Present',
+    title: 'UX Designer',
+    description: 'Improved onboarding and design systems.',
+  }])
+})

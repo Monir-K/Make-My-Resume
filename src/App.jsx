@@ -721,6 +721,7 @@ function App() {
   const [resumeImportDraft, setResumeImportDraft] = useState(null)
   const [resumeImportError, setResumeImportError] = useState('')
   const [resumeImporting, setResumeImporting] = useState(false)
+  const [resumeImportStatus, setResumeImportStatus] = useState('')
   const resumeImportTriggerRef = useRef(null)
   const resumeImportDialogRef = useRef(null)
   const resumeImportCloseRef = useRef(null)
@@ -1243,22 +1244,27 @@ function App() {
 
     setResumeImporting(true)
     setResumeImportError('')
+    setResumeImportStatus('Reading resume on this device…')
     try {
       const { extractResumeText, parseResumeText } = await import('./resumeImport.js')
-      const text = await extractResumeText(file)
+      const text = await extractResumeText(file, ({ status, progress }) => {
+        const percentage = Number.isFinite(progress) ? ` ${Math.round(progress * 100)}%` : ''
+        setResumeImportStatus(`${status}${percentage}`)
+      })
       const parsed = parseResumeText(text)
       const hasRecognizedData = Object.values(parsed.profile).some(Boolean) || parsed.skills.length || parsed.education.length || parsed.experience.length
 
       if (!hasRecognizedData) {
-        throw new Error('No readable resume details were found. Scanned PDFs need OCR and are not supported yet.')
+        throw new Error('No readable resume details were found. Try a sharper image or a text-based document.')
       }
 
       setResumeImportDraft({ ...parsed, fileName: file.name })
       setResumeImportOpen(true)
     } catch (error) {
-      setResumeImportError(error.message || 'This resume could not be read. Try a text-based PDF, DOCX, or TXT file.')
+      setResumeImportError(error.message || 'This resume could not be read. Try a text-based document or a clear image.')
     } finally {
       setResumeImporting(false)
+      setResumeImportStatus('')
     }
   }
 
@@ -1551,7 +1557,7 @@ function App() {
             ref={resumeImportInputRef}
             className="resume-import-file-input"
             type="file"
-            accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+            accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/*"
             onChange={handleResumeImport}
             aria-label="Choose an existing resume to import"
           />
@@ -1564,7 +1570,8 @@ function App() {
           >
             <span aria-hidden="true">↑</span> {resumeImporting ? 'Reading resume…' : 'Import resume'}
           </button>
-          <span className="resume-import-note">PDF, DOCX or TXT · scanned PDFs need OCR · stays on this device</span>
+          <span className="resume-import-note">PDF, DOCX, TXT or image · OCR files stay on this device</span>
+          {resumeImportStatus && <span className="resume-import-status" role="status">{resumeImportStatus}</span>}
           {resumeImportError && <span className="resume-import-error" role="alert">{resumeImportError}</span>}
         </div>
 

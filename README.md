@@ -28,4 +28,4 @@ Until the D1 binding is active and the schema is applied, the star control repor
 
 ## Import an existing resume
 
-The editor can import text-based PDF, DOCX, and TXT resumes. Parsing happens in the browser; the file is not uploaded. Detected contact details, summary, skills, experience, and education are shown in an editable review dialog before they are applied. Empty or unrecognized fields keep their existing values. Scanned image-only PDFs are not OCR'd and cannot be imported as text.
+The editor can import PDF, DOCX, TXT, JPG/JPEG, PNG, WebP, BMP, and TIFF resumes. Parsing and OCR happen in the browser; the file is not uploaded. Detected contact details, summary, skills, experience, and education are shown in an editable review dialog before they are applied. Empty or unrecognized fields keep their existing values. OCR uses English recognition data from the Tesseract data CDN, which may download on first use and requires an internet connection. Scanned PDFs are limited to five pages for OCR; text-based PDFs support up to 25 pages. Image files are limited to 12 MB.
