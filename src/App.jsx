@@ -1337,7 +1337,12 @@ function App() {
 
     const bounds = source.getBoundingClientRect()
     const width = Math.ceil(bounds.width)
-    const height = Math.ceil(source.scrollHeight)
+    const contentHeight = Math.max(Math.ceil(bounds.height), Math.ceil(source.scrollHeight))
+    const landscape = width / contentHeight >= 297 / 210
+    const height = Math.max(
+      contentHeight,
+      Math.ceil(width * (landscape ? 210 / 297 : 297 / 210)),
+    )
     const clone = source.cloneNode(true)
     clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
 
@@ -1361,9 +1366,15 @@ function App() {
     clone.style.height = `${height}px`
     clone.style.minHeight = '0'
     clone.style.maxWidth = 'none'
+    clone.style.margin = '0'
+    clone.style.border = '0'
     clone.style.borderRadius = '0'
     clone.style.boxShadow = 'none'
     clone.style.overflow = 'visible'
+    clone.querySelectorAll(':scope > .sidebar, :scope > .content').forEach((column) => {
+      column.style.height = 'auto'
+      column.style.minHeight = '0'
+    })
 
     const markup = new XMLSerializer().serializeToString(clone)
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><foreignObject width="100%" height="100%">${markup}</foreignObject></svg>`
@@ -1386,11 +1397,7 @@ function App() {
     const sourceIsLandscape = sourceCanvas.width / sourceCanvas.height >= 1
     const pageWidth = sourceIsLandscape ? 3508 : 2480
     const pageHeight = sourceIsLandscape ? 2480 : 3508
-    const margin = 110
-    const scale = Math.min(
-      (pageWidth - margin * 2) / sourceCanvas.width,
-      (pageHeight - margin * 2) / sourceCanvas.height,
-    )
+    const scale = Math.max(pageWidth / sourceCanvas.width, pageHeight / sourceCanvas.height)
     const drawWidth = sourceCanvas.width * scale
     const drawHeight = sourceCanvas.height * scale
     const canvas = document.createElement('canvas')
@@ -1403,6 +1410,56 @@ function App() {
     context.fillRect(0, 0, pageWidth, pageHeight)
     context.drawImage(sourceCanvas, (pageWidth - drawWidth) / 2, (pageHeight - drawHeight) / 2, drawWidth, drawHeight)
     return canvas
+  }
+
+  // Embed the full-page image directly so browser print margins and headers are not added.
+  const createA4Pdf = async (canvas) => {
+    const jpegBlob = await new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob)
+        else reject(new Error('Could not encode the CV as a PDF image'))
+      }, 'image/jpeg', 0.94)
+    })
+    const jpegBytes = new Uint8Array(await jpegBlob.arrayBuffer())
+    const landscape = canvas.width > canvas.height
+    const pageWidth = landscape ? 841.89 : 595.28
+    const pageHeight = landscape ? 595.28 : 841.89
+    const encoder = new TextEncoder()
+    const chunks = []
+    let byteLength = 0
+    const append = (bytes) => {
+      chunks.push(bytes)
+      byteLength += bytes.length
+    }
+    const appendText = (value) => append(encoder.encode(value))
+    const offsets = [0]
+    const startObject = (number) => {
+      offsets[number] = byteLength
+      appendText(`${number} 0 obj\n`)
+    }
+
+    append(new Uint8Array([37, 80, 68, 70, 45, 49, 46, 52, 10, 37, 226, 227, 207, 211, 10]))
+    startObject(1)
+    appendText('<< /Type /Catalog /Pages 2 0 R >>\nendobj\n')
+    startObject(2)
+    appendText('<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n')
+    startObject(3)
+    appendText(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`)
+    startObject(4)
+    appendText(`<< /Type /XObject /Subtype /Image /Width ${canvas.width} /Height ${canvas.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n`)
+    append(jpegBytes)
+    appendText('\nendstream\nendobj\n')
+    const content = `q\n${pageWidth} 0 0 ${pageHeight} 0 0 cm\n/Im0 Do\nQ\n`
+    startObject(5)
+    appendText(`<< /Length ${encoder.encode(content).length} >>\nstream\n${content}endstream\nendobj\n`)
+
+    const crossReferenceOffset = byteLength
+    appendText(`xref\n0 ${offsets.length}\n0000000000 65535 f \n`)
+    for (let number = 1; number < offsets.length; number += 1) {
+      appendText(`${String(offsets[number]).padStart(10, '0')} 00000 n \n`)
+    }
+    appendText(`trailer\n<< /Size ${offsets.length} /Root 1 0 R >>\nstartxref\n${crossReferenceOffset}\n%%EOF`)
+    return new Blob(chunks, { type: 'application/pdf' })
   }
 
   const exportAsPng = async () => {
@@ -1461,7 +1518,7 @@ function App() {
           <style>
             @page { size: A4 ${orientation}; margin: 0; }
             * { box-sizing: border-box; }
-            html, body { min-height: 100%; margin: 0; }
+            html, body { min-height: 100%; margin: 0; padding: 0; }
             body { background: #e9ece5; color: #26332e; font: 15px Arial, sans-serif; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
             .preview-toolbar { position: sticky; top: 0; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 20px; background: #fff; border-bottom: 1px solid #d7dfd4; box-shadow: 0 2px 8px rgba(38,51,46,.08); }
             .preview-toolbar strong { font-size: 16px; }
@@ -1471,9 +1528,10 @@ function App() {
             .preview-paper { width: min(760px, calc(100vw - 32px)); aspect-ratio: ${canvas.width} / ${canvas.height}; margin: 24px auto; background: #fff; box-shadow: 0 12px 38px rgba(38,51,46,.2); }
             .preview-paper img { display: block; width: 100%; height: 100%; object-fit: contain; }
             @media print {
-              html, body { width: 100%; height: 100%; background: #fff; }
+              html, body { width: ${orientation === 'landscape' ? '297mm' : '210mm'}; height: ${orientation === 'landscape' ? '210mm' : '297mm'}; min-height: 0; margin: 0 !important; padding: 0 !important; overflow: hidden; background: #fff; }
               .preview-toolbar { display: none !important; }
-              .preview-paper { width: 100vw; height: 100vh; max-width: none; aspect-ratio: auto; margin: 0; box-shadow: none; }
+              .preview-paper { position: fixed; inset: 0 auto auto 0; width: ${orientation === 'landscape' ? '297mm' : '210mm'}; height: ${orientation === 'landscape' ? '210mm' : '297mm'}; max-width: none; aspect-ratio: auto; margin: 0 !important; overflow: hidden; box-shadow: none; }
+              .preview-paper img { width: 100%; height: 100%; object-fit: fill; }
             }
             @media (max-width: 480px) {
               .preview-toolbar { align-items: flex-start; flex-direction: column; gap: 10px; }
@@ -1505,7 +1563,22 @@ function App() {
     }
   }
 
-  const exportAsPdf = () => openCvPrintView(true)
+  const exportAsPdf = async () => {
+    try {
+      const canvas = createA4Canvas(await captureStyledPreview())
+      const pdf = await createA4Pdf(canvas)
+      const pdfUrl = URL.createObjectURL(pdf)
+      const link = document.createElement('a')
+      link.href = pdfUrl
+      link.download = `${(profile.name || 'cv').replace(/\s+/g, '_')}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000)
+    } catch {
+      window.alert('The CV could not be prepared as an A4 PDF. Please try again.')
+    }
+  }
   const openPrintPreview = async () => {
     try {
       const canvas = createA4Canvas(await captureStyledPreview())
