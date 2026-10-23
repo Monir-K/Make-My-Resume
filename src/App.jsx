@@ -1375,6 +1375,13 @@ function App() {
       column.style.height = 'auto'
       column.style.minHeight = '0'
     })
+    clone.querySelectorAll(
+      '.profile-header, .panel, .skill-list, .skill-row, .skill-label-row, .contact-list, .contact-item, .personal-info-list, .personal-info-list li, .hobby-list, .section, .section-header, .lead-text, .timeline-list, .timeline-item, .timeline-copy',
+    ).forEach((element) => {
+      element.style.height = 'auto'
+      element.style.minHeight = '0'
+      element.style.maxHeight = 'none'
+    })
 
     const markup = new XMLSerializer().serializeToString(clone)
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><foreignObject width="100%" height="100%">${markup}</foreignObject></svg>`
