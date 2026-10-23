@@ -1382,6 +1382,15 @@ function App() {
       element.style.minHeight = '0'
       element.style.maxHeight = 'none'
     })
+    clone.querySelectorAll('.skill-label-row').forEach((row) => {
+      row.style.width = '100%'
+    })
+    clone.querySelectorAll('.skill-label-row > span').forEach((label) => {
+      label.style.width = 'auto'
+      label.style.height = 'auto'
+      label.style.minWidth = '0'
+      label.style.maxWidth = 'none'
+    })
 
     const markup = new XMLSerializer().serializeToString(clone)
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><foreignObject width="100%" height="100%">${markup}</foreignObject></svg>`
